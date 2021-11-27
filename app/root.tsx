@@ -1,4 +1,6 @@
 import {
+  ActionFunction,
+  json,
   Link,
   Links,
   LiveReload,
@@ -6,12 +8,16 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
-  useCatch
+  useCatch,
+  useSubmit
 } from "remix";
 import type { LinksFunction } from "remix";
+import { supabase } from "./lib/supabaseClient";
+import { commitSession, destroySession, getSession } from "./lib/sessions";
 
 import globalStylesUrl from "~/styles/global.css";
 import darkStylesUrl from "~/styles/dark.css";
+import { useEffect } from "react";
 
 // https://remix.run/api/app#links
 export let links: LinksFunction = () => {
@@ -93,6 +99,28 @@ export function CatchBoundary() {
   );
 }
 
+export const action: ActionFunction = async ({request}: { request: any }) => {
+  let session = await getSession(
+    request.headers.get("Cookie")
+  );
+  let params = await request.text()
+  let {event = "", token = ""} = Object.fromEntries(new URLSearchParams(params));
+  console.log(event)
+  if (event === "SIGNED_IN") {
+    session.set("token", token);
+    return json(null, {
+      headers: {
+        "Set-Cookie": await commitSession(session)
+      }
+    });
+  }
+  return json(null, {
+    headers: {
+      "Set-Cookie": await destroySession(session)
+    }
+  });
+}
+
 function Document({
   children,
   title
@@ -100,6 +128,20 @@ function Document({
   children: React.ReactNode;
   title?: string;
 }) {
+  let submit = useSubmit();
+
+  useEffect(() => {
+    const {data: authListener} = supabase.auth.onAuthStateChange((event, session) => {
+      let token = session?.access_token ?? "";
+      submit({event, token}, {method: "post"});
+    })
+
+    return () => {
+      authListener?.unsubscribe()
+    }
+  }, [])
+
+
   return (
     <html lang="en">
       <head>

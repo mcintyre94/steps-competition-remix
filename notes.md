@@ -28,3 +28,29 @@ added 358 packages, and audited 359 packages in 13s
 found 0 vulnerabilities
 💿 That's it! `cd` into "steps-competition-remix" and check the README for development and deploy instructions!
 
+--
+
+Note: used Cloudflare Workers, kinda speculative, we'll see!
+
+Check remix README:
+- npm run dev
+- AND npm start
+- localhost:8787
+
+--
+
+Ensure we're on latest node (added .nvmrc for this)
+
+--
+
+- Install supabase
+- npm install @supabase/supabase-js
+- create supabase client: `export const supabase = createClient(supabaseUrl, supabaseAnonKey, {fetch: fetch.bind(globalThis)})`
+  - custom fetch impl because cloudflare workers don't have XMLHttpRequest
+- Update root:
+  - Action: get session + create/delete cookie based on supabase event
+  - useEffect: listen to supabase auth change + call action
+- On a page:
+  - Loader: get session + authed user (if any) on load
+  - Action: supabase sign-in (send magic link)
+  - On the page: transition shows sending message, action shows sent message (or error)
